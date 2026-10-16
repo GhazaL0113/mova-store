@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { SiStellar } from "react-icons/si";
@@ -20,11 +20,27 @@ export default function OrderCard({ order }: OrderCardProps) {
     verified?: boolean;
     onChainStatus?: string;
   } | null>(null);
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(order.orderId);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  useEffect(() => {
+    return () => {
+      if (copyTimeoutRef.current) {
+        clearTimeout(copyTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(order.orderId);
+      setCopied(true);
+      if (copyTimeoutRef.current) {
+        clearTimeout(copyTimeoutRef.current);
+      }
+      copyTimeoutRef.current = setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setCopied(false);
+    }
   };
 
   const handleVerify = async () => {
@@ -89,11 +105,18 @@ export default function OrderCard({ order }: OrderCardProps) {
               type="button"
               onClick={handleCopy}
               title="Copy Order ID"
-              aria-label="Copy Order ID"
+              aria-label={copied ? "Order ID copied" : "Copy Order ID"}
               className="text-gray-400 hover:text-purple-600 transition-colors p-1"
             >
               {copied ? <FaCheck className="text-green-600" size={12} /> : <FaCopy size={12} />}
             </button>
+            <span
+              role="status"
+              aria-live="polite"
+              className="sr-only"
+            >
+              {copied ? "Order ID copied" : ""}
+            </span>
           </div>
           <span className="text-xs text-gray-500">{formattedDate}</span>
         </div>
@@ -112,14 +135,15 @@ export default function OrderCard({ order }: OrderCardProps) {
       {/* Items Section */}
       <div className="p-4 sm:p-5 divide-y divide-gray-100">
         {order.items && order.items.length > 0 ? (
-          order.items.map((item, idx) => (
-            <div key={idx} className="py-3 first:pt-0 last:pb-0 flex items-center justify-between gap-4">
+          order.items.map((item) => (
+            <div key={item.id} className="py-3 first:pt-0 last:pb-0 flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 {item.img ? (
-                  /* eslint-disable-next-line @next/next/no-img-element */
-                  <img
+                  <Image
                     src={item.img}
                     alt={item.name}
+                    width={48}
+                    height={48}
                     className="w-12 h-12 rounded-lg object-cover bg-gray-50 border border-purple-50"
                   />
                 ) : (
